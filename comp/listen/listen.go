@@ -1,7 +1,7 @@
 package listen
 
 import (
-	"comps/comp/conn"
+	"comps/comp/conns"
 	"comps/comp/logger"
 	"comps/core"
 	"context"
@@ -14,7 +14,7 @@ type listenImpl struct{}
 // Main is the component implementation for this package (`comp/listen.Main`).
 //
 // On requests with messages of type `comp/listen.Run`, it listens for new connections
-// and hands them to the `comp/conn.Main` component.
+// and hands them to the `comp/conns.Main` component.
 var Main core.ComponentImpl = &listenImpl{}
 
 // Path implements core.ComponentImpl#Path.
@@ -24,14 +24,14 @@ func (*listenImpl) Path() core.ComponentPath {
 
 // Dependencies implements core.ComponentImpl#Dependencies.
 func (*listenImpl) Dependencies() []core.ComponentPath {
-	return []core.ComponentPath{"comp/logger.Main", "comp/conn.Main"}
+	return []core.ComponentPath{"comp/logger.Main", "comp/conns.Main"}
 }
 
 // Start implements core.ComponentImpl#Start.
 func (*listenImpl) Start(deps map[core.ComponentPath]core.ComponentReference) core.Component {
 	l := &listen{
 		logger: logger.Wrap(deps),
-		conn:   deps["comp/conn.Main"],
+		conns:  deps["comp/conns.Main"],
 	}
 	return l
 }
@@ -41,7 +41,7 @@ type Run struct{}
 
 type listen struct {
 	logger logger.Wrapper
-	conn   core.ComponentReference
+	conns  core.ComponentReference
 }
 
 var _ core.Component = &listen{}
@@ -92,7 +92,7 @@ func (l *listen) run(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		_, err = l.conn.Request(ctx, conn.Connection{Conn: c})
+		_, err = l.conns.Request(ctx, conns.Connection{Conn: c})
 		if err != nil {
 			return err
 		}
