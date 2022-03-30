@@ -16,6 +16,8 @@ There are three primary types involved:
  * ComponentReference -- this defines a reference to a (possibly remote) component, mediating communication with that component.
    This is similar to an instance pointer in OOP.
 
+   ComponentReference is separate from the Component to allow remote references (by proxying requests an responses) and to support the common case where the Component is an actor and reqests/responses are handled with channels.
+
 # TODO
 
 ## Convenience Wrappers

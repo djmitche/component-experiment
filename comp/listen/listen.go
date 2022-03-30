@@ -1,7 +1,7 @@
 package listen
 
 import (
-	"comps/comp/echo"
+	"comps/comp/conn"
 	"comps/comp/logger"
 	"comps/core"
 	"context"
@@ -14,8 +14,7 @@ type listenImpl struct{}
 // Main is the component implementation for this package (`comp/listen.Main`).
 //
 // On requests with messages of type `comp/listen.Run`, it listens for new connections
-// and spawns echo servers for each.  An empty response occurs when the context is
-// cancelled, and running connections will also be terminated at that time.
+// and hands them to the `comp/conn.Main` component.
 var Main core.ComponentImpl = &listenImpl{}
 
 // Path implements core.ComponentImpl#Path.
@@ -25,17 +24,15 @@ func (*listenImpl) Path() core.ComponentPath {
 
 // Dependencies implements core.ComponentImpl#Dependencies.
 func (*listenImpl) Dependencies() []core.ComponentPath {
-	return []core.ComponentPath{"comp/logger.Main", "comp/echo.Main"}
+	return []core.ComponentPath{"comp/logger.Main", "comp/conn.Main"}
 }
 
 // Start implements core.ComponentImpl#Start.
 func (*listenImpl) Start(deps map[core.ComponentPath]core.ComponentReference) core.Component {
-	fmt.Printf("%#v\n", deps)
 	l := &listen{
 		logger: deps["comp/logger.Main"],
-		echo:   deps["comp/echo.Main"],
+		conn:   deps["comp/conn.Main"],
 	}
-	fmt.Printf("%#v\n", l)
 	return l
 }
 
@@ -44,7 +41,7 @@ type Run struct{}
 
 type listen struct {
 	logger core.ComponentReference
-	echo   core.ComponentReference
+	conn   core.ComponentReference
 }
 
 var _ core.Component = &listen{}
@@ -57,7 +54,6 @@ func (l *listen) NewReference() core.ComponentReference {
 
 // Request implements core.ComponentReference#Request.
 func (l *listen) Request(ctx context.Context, msg core.Message) (core.Message, error) {
-	fmt.Printf("%#v\n", l)
 	switch msg.(type) {
 	case Run:
 		err := l.run(ctx)
@@ -92,16 +88,16 @@ func (l *listen) run(ctx context.Context) error {
 	}()
 
 	for {
-		conn, err := listener.Accept()
+		c, err := listener.Accept()
 		if err != nil {
 			return err
 		}
-		_, err = l.echo.Request(ctx, echo.Connection{Conn: conn})
+		_, err = l.conn.Request(ctx, conn.Connection{Conn: c})
 		if err != nil {
 			return err
 		}
 	}
 
-	l.logger.Request(ctx, logger.Output{Message: fmt.Sprintf("Done listening on port", 9000)})
+	l.logger.Request(ctx, logger.Output{Message: fmt.Sprintf("Done listening on port %d", 9000)})
 	return nil
 }
