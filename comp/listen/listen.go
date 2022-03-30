@@ -30,7 +30,7 @@ func (*listenImpl) Dependencies() []core.ComponentPath {
 // Start implements core.ComponentImpl#Start.
 func (*listenImpl) Start(deps map[core.ComponentPath]core.ComponentReference) core.Component {
 	l := &listen{
-		logger: deps["comp/logger.Main"],
+		logger: logger.Wrap(deps),
 		conn:   deps["comp/conn.Main"],
 	}
 	return l
@@ -40,7 +40,7 @@ func (*listenImpl) Start(deps map[core.ComponentPath]core.ComponentReference) co
 type Run struct{}
 
 type listen struct {
-	logger core.ComponentReference
+	logger logger.Wrapper
 	conn   core.ComponentReference
 }
 
@@ -79,7 +79,7 @@ func (l *listen) run(ctx context.Context) error {
 		return err
 	}
 
-	l.logger.Request(ctx, logger.Output{Message: fmt.Sprintf("Listening on port %d", 9000)})
+	l.logger.Output(fmt.Sprintf("Listening on port %d", 9000))
 
 	// stupid workaround to stop listening when the context expires
 	go func() {
@@ -98,6 +98,6 @@ func (l *listen) run(ctx context.Context) error {
 		}
 	}
 
-	l.logger.Request(ctx, logger.Output{Message: fmt.Sprintf("Done listening on port %d", 9000)})
+	l.logger.Output(fmt.Sprintf("Done on port %d", 9000))
 	return nil
 }

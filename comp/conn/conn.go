@@ -2,6 +2,7 @@ package conn
 
 import (
 	"bufio"
+	"comps/comp/logger"
 	"comps/core"
 	"context"
 	"fmt"
@@ -30,7 +31,7 @@ func (*connImpl) Dependencies() []core.ComponentPath {
 // Start implements core.ComponentImpl#Start.
 func (*connImpl) Start(deps map[core.ComponentPath]core.ComponentReference) core.Component {
 	c := &conn{
-		logger:        deps["comp/logger.Main"],
+		logger:        logger.Wrap(deps),
 		newConnection: make(chan net.Conn, 5),
 		userLines:     make(chan userLine, 5),
 	}
@@ -44,7 +45,7 @@ type Connection struct {
 }
 
 type conn struct {
-	logger core.ComponentReference
+	logger logger.Wrapper
 
 	newConnection chan net.Conn
 	userLines     chan userLine
@@ -71,8 +72,12 @@ func (c *conn) run() {
 			go user.read(conn, uid, c.userLines)
 			go user.write(conn, outgoing)
 		case userLine := <-c.userLines:
-			for _, u := range users {
-				u.outgoing <- userLine.line
+			c.logger.Output(fmt.Sprintf("Got message %#v from %d", userLine.line, userLine.uid))
+			output := fmt.Sprintf("%d: %s", userLine.uid, userLine.line)
+			for uid, u := range users {
+				if uid != userLine.uid {
+					u.outgoing <- output
+				}
 			}
 		}
 	}

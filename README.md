@@ -17,24 +17,3 @@ There are three primary types involved:
    This is similar to an instance pointer in OOP.
 
    ComponentReference is separate from the Component to allow remote references (by proxying requests an responses) and to support the common case where the Component is an actor and reqests/responses are handled with channels.
-
-# TODO
-
-## Convenience Wrappers
-
-Logging is not particularly ergonomic:
-```go
-e.logger.Request(ctx, logger.Output{Message: "hello, world"})
-```
-
-Maybe a component can provide a convenience wrapper around its ComponentReference type that allows more ergonomic calls:
-
-```go
-func (*impl) Start(deps map[core.ComponentPath]core.ComponentReference) core.Component {
-	return &comp{
-        logger: logger.Wrapper(deps),
-    }
-}
-// ...
-e.logger.Output("hello, world")
-```
