@@ -13,19 +13,17 @@ type ComponentPath string
 
 // ComponentImpl defines a component implementation.  These are simple (usually
 // empty) objects defining methods to start components.
-type ComponentImpl interface {
-	// Path returns the component path for this component implementation. This value
-	// should not change.
-	Path() ComponentPath
+type ComponentImpl struct {
+	// Path is the component path for this component implementation.
+	Path ComponentPath
 
-	// Dependencies returns the component paths on which this component relies.  This
-	// value should not change.
-	Dependencies() []ComponentPath
+	// Dependencies gives the component paths on which this component relies.
+	Dependencies []ComponentPath
 
 	// Start starts an instance of the component.  This will be called on-demand, when
 	// the component is needed.  The given map will contain an entry for every dependency
-	// path given by Dependencies().
-	Start(map[ComponentPath]ComponentReference) Component
+	// path given by Dependencies.
+	Start func(map[ComponentPath]ComponentReference) Component
 }
 
 // Component represents a running instance of a component implementation.
@@ -65,7 +63,7 @@ func NewOrchestrator(componentImpls ...ComponentImpl) *Orchestrator {
 		active:     make(map[ComponentPath]Component),
 	}
 	for _, ci := range componentImpls {
-		orch.registered[ci.Path()] = ci
+		orch.registered[ci.Path] = ci
 	}
 	return orch
 }
@@ -87,7 +85,7 @@ func (orch *Orchestrator) getComponentReference(path ComponentPath) (ComponentRe
 		comp := orch.active[path]
 		if comp == nil {
 			compImpl := orch.registered[path]
-			if compImpl == nil {
+			if compImpl.Path == "" {
 				err := fmt.Errorf("No component with path %s", path)
 				return nil, err
 			}
@@ -95,7 +93,7 @@ func (orch *Orchestrator) getComponentReference(path ComponentPath) (ComponentRe
 			seen = append(seen, path)
 
 			deps := map[ComponentPath]ComponentReference{}
-			for _, depPath := range compImpl.Dependencies() {
+			for _, depPath := range compImpl.Dependencies {
 				ref, err := recur(seen, depPath)
 				if err != nil {
 					return nil, err

@@ -9,6 +9,25 @@ import (
 	"sync"
 )
 
+var componentPath core.ComponentPath = "comp/users.Main"
+
+// Main is the component implementation for this package (`comp/users.Main`).
+//
+// This component accepts NewUser, UserGone, and UserMessage messages to handle
+// user traffic.  It accepts a SetConnsComponent message at startup to identify
+// the `comp/conns.Main` component, on which it has a weak dependency.
+var Main = core.ComponentImpl{
+	Path:         componentPath,
+	Dependencies: []core.ComponentPath{"comp/logger.Main"},
+	Start: func(deps map[core.ComponentPath]core.ComponentReference) core.Component {
+		c := &component{
+			logger: logger.Wrap(deps),
+			users:  map[int]*user{},
+		}
+		return c
+	},
+}
+
 type component struct {
 	mu     sync.Mutex
 	logger logger.Wrapper

@@ -9,6 +9,29 @@ import (
 	"net"
 )
 
+var componentPath core.ComponentPath = "comp/conns.Main"
+
+// Main is the component implementation for this package (`comp/conns.Main`).
+//
+// The component accepts messages of type Connection, indicating to begin handling
+// the given TCP connection.  The component responds immediately with a nil message,
+// and handles the connection until EOF.
+var Main = core.ComponentImpl{
+	Path:         componentPath,
+	Dependencies: []core.ComponentPath{"comp/logger.Main", "comp/users.Main"},
+	Start: func(deps map[core.ComponentPath]core.ComponentReference) core.Component {
+		c := &component{
+			logger:        logger.Wrap(deps),
+			users:         deps["comp/users.Main"],
+			newConnection: make(chan net.Conn, 5),
+			incoming:      make(chan incoming, 5),
+			outgoing:      make(chan outgoing, 5),
+		}
+		go c.run()
+		return c
+	},
+}
+
 type component struct {
 	logger logger.Wrapper
 	users  core.ComponentReference

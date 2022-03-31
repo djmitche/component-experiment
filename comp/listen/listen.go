@@ -9,31 +9,22 @@ import (
 	"net"
 )
 
-type listenImpl struct{}
+var componentPath core.ComponentPath = "comp/listen.Main"
 
 // Main is the component implementation for this package (`comp/listen.Main`).
 //
 // On requests with messages of type `comp/listen.Run`, it listens for new connections
 // and hands them to the `comp/conns.Main` component.
-var Main core.ComponentImpl = &listenImpl{}
-
-// Path implements core.ComponentImpl#Path.
-func (*listenImpl) Path() core.ComponentPath {
-	return (core.ComponentPath)("comp/listen.Main")
-}
-
-// Dependencies implements core.ComponentImpl#Dependencies.
-func (*listenImpl) Dependencies() []core.ComponentPath {
-	return []core.ComponentPath{"comp/logger.Main", "comp/conns.Main"}
-}
-
-// Start implements core.ComponentImpl#Start.
-func (*listenImpl) Start(deps map[core.ComponentPath]core.ComponentReference) core.Component {
-	l := &listen{
-		logger: logger.Wrap(deps),
-		conns:  deps["comp/conns.Main"],
-	}
-	return l
+var Main = core.ComponentImpl{
+	Path:         componentPath,
+	Dependencies: []core.ComponentPath{"comp/logger.Main", "comp/conns.Main"},
+	Start: func(deps map[core.ComponentPath]core.ComponentReference) core.Component {
+		l := &listen{
+			logger: logger.Wrap(deps),
+			conns:  deps["comp/conns.Main"],
+		}
+		return l
+	},
 }
 
 // Run is a core.Message that indicates the component should run

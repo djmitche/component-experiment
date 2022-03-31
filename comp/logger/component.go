@@ -6,6 +6,20 @@ import (
 	"fmt"
 )
 
+var componentPath core.ComponentPath = "comp/logger.Main"
+
+// Main is the component implementation for this package (`comp/logger.Main`).
+//
+// On requests with messages of type `comp/logger.Output`, it logs the message
+// and returns nil.
+var Main = core.ComponentImpl{
+	Path:         componentPath,
+	Dependencies: []core.ComponentPath{},
+	Start: func(map[core.ComponentPath]core.ComponentReference) core.Component {
+		return &logger{}
+	},
+}
+
 type logger struct{}
 
 var _ core.Component = &logger{}
