@@ -5,30 +5,41 @@ import (
 	"net"
 )
 
-type user struct {
-	uid      int
+type connection struct {
+	conn     net.Conn
+	cid      int
 	outgoing chan string
 }
 
-func (u *user) read(conn net.Conn, uid int, userLines chan<- userLine) {
-	scanner := bufio.NewScanner(conn)
+func (c *connection) run(incomingChan chan<- incoming) {
+	// send outgoing messages to the remote end until error
+	go func() {
+		for {
+			msg := append([]byte(<-c.outgoing), '\n')
+			for len(msg) > 0 {
+				n, err := c.conn.Write(msg)
+				if err != nil {
+					return // assume this is EOF
+				}
+				msg = msg[n:]
+			}
+		}
+	}()
+
+	// read from the connection and send to incoming, until EOF
+	scanner := bufio.NewScanner(c.conn)
 	for scanner.Scan() {
-		userLines <- userLine{
-			uid:  uid,
+		incomingChan <- incoming{
+			cid:  c.cid,
 			line: scanner.Text(),
 		}
 	}
-}
 
-func (u *user) write(conn net.Conn, outgoing <-chan string) {
-	for {
-		msg := append([]byte(<-outgoing), '\n')
-		for len(msg) > 0 {
-			n, err := conn.Write(msg)
-			if err != nil {
-				panic(err) // TODO :)
-			}
-			msg = msg[n:]
-		}
+	// close the conn, for good measure
+	_ = c.conn.Close()
+
+	incomingChan <- incoming{
+		cid:   c.cid,
+		close: true,
 	}
 }

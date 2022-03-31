@@ -17,3 +17,11 @@ There are three primary types involved:
    This is similar to an instance pointer in OOP.
 
    ComponentReference is separate from the Component to allow remote references (by proxying requests an responses) and to support the common case where the Component is an actor and reqests/responses are handled with channels.
+
+# TODO
+
+ - impl as a pub struct with function pointer
+ - circular deps
+ - health monitoring
+ - telemetry
+ - describe components and links (explicit "weak" deps?)

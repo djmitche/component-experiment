@@ -2,16 +2,20 @@ package conns
 
 import (
 	"comps/comp/logger"
+	"comps/comp/users"
 	"comps/core"
+	"context"
 	"fmt"
 	"net"
 )
 
 type component struct {
 	logger logger.Wrapper
+	users  core.ComponentReference
 
 	newConnection chan net.Conn
-	userLines     chan userLine
+	incoming      chan incoming
+	outgoing      chan outgoing
 }
 
 var _ core.Component = &component{}
@@ -23,25 +27,38 @@ func (c *component) NewReference() core.ComponentReference {
 
 func (c *component) run() {
 	nextUser := 1
-	users := map[int]user{}
+	conns := map[int]connection{}
 	for {
 		select {
-		case conn := <-c.newConnection:
-			uid := nextUser
+		case netconn := <-c.newConnection:
+			cid := nextUser
 			nextUser++
-			outgoing := make(chan string, 5)
-			user := user{uid, outgoing}
-			users[uid] = user
-			go user.read(conn, uid, c.userLines)
-			go user.write(conn, outgoing)
+			outgoingChan := make(chan string, 5)
+			conn := connection{netconn, cid, outgoingChan}
+			conns[cid] = conn
+			go conn.run(c.incoming)
+			c.users.RequestAsync(context.Background(),
+				users.NewUser{
+					Cid: cid,
+					SendMessage: func(msg string) {
+						c.outgoing <- outgoing{cid: cid, line: msg}
+					},
+				})
 
-		case userLine := <-c.userLines:
-			c.logger.Output(fmt.Sprintf("Got message %#v from %d", userLine.line, userLine.uid))
-			output := fmt.Sprintf("%d: %s", userLine.uid, userLine.line)
-			for uid, u := range users {
-				if uid != userLine.uid {
-					u.outgoing <- output
-				}
+		case out := <-c.outgoing:
+			conn, found := conns[out.cid]
+			if found {
+				conn.outgoing <- out.line
+			}
+
+		case inc := <-c.incoming:
+			if inc.close {
+				c.logger.Output(fmt.Sprintf("Got close from %d", inc.cid))
+				c.users.RequestAsync(context.Background(), users.UserGone{Cid: inc.cid})
+				delete(conns, inc.cid)
+			} else {
+				c.logger.Output(fmt.Sprintf("Got message %#v from %d", inc.line, inc.cid))
+				c.users.RequestAsync(context.Background(), users.UserMessage{Cid: inc.cid, Message: inc.line})
 			}
 		}
 	}
