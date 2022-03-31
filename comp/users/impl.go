@@ -30,7 +30,7 @@ func (*impl) Dependencies() []core.ComponentPath {
 func (*impl) Start(deps map[core.ComponentPath]core.ComponentReference) core.Component {
 	c := &component{
 		logger: logger.Wrap(deps),
-		users:  map[int]user{},
+		users:  map[int]*user{},
 	}
 	return c
 }

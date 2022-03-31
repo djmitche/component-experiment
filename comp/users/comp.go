@@ -5,13 +5,14 @@ import (
 	"comps/core"
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 )
 
 type component struct {
 	mu     sync.Mutex
 	logger logger.Wrapper
-	users  map[int]user
+	users  map[int]*user
 }
 
 var _ core.Component = &component{}
@@ -29,16 +30,30 @@ func (c *component) Request(ctx context.Context, msg core.Message) (core.Message
 
 	switch v := msg.(type) {
 	case NewUser:
-		u := user{cid: v.Cid, sendMessage: v.SendMessage}
+		u := &user{cid: v.Cid, sendMessage: v.SendMessage}
 		c.users[v.Cid] = u
 		u.sendMessage("welcome!")
 	case UserGone:
 		delete(c.users, v.Cid)
 	case UserMessage:
-		for cid, u := range c.users {
-			message := fmt.Sprintf("%d: %s", v.Cid, v.Message)
-			if cid != v.Cid {
-				u.sendMessage(message)
+		u, found := c.users[v.Cid]
+		if !found {
+			break
+		}
+		switch {
+		case strings.HasPrefix(v.Message, "/join"):
+			room := v.Message[6:]
+			if u.room != "" {
+				c.sendToRoom(0, u.room, fmt.Sprintf("%d has left %s", v.Cid, room))
+			}
+			u.room = room
+			c.sendToRoom(0, u.room, fmt.Sprintf("%d has joined %s", v.Cid, room))
+			c.logger.Output(fmt.Sprintf("%d has joined %s", v.Cid, room))
+		default:
+			if u.room == "" {
+				u.sendMessage("join a room first (/join)")
+			} else {
+				c.sendToRoom(v.Cid, u.room, fmt.Sprintf("%d: %s", v.Cid, v.Message))
 			}
 		}
 	default:
@@ -46,6 +61,14 @@ func (c *component) Request(ctx context.Context, msg core.Message) (core.Message
 	}
 
 	return nil, nil
+}
+
+func (c *component) sendToRoom(senderCid int, room string, message string) {
+	for cid, u := range c.users {
+		if cid != senderCid && u.room == room {
+			u.sendMessage(message)
+		}
+	}
 }
 
 // RequestAsync implements core.ComponentReference#RequestAsync.

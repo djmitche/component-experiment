@@ -26,5 +26,6 @@ type UserMessage struct {
 
 type user struct {
 	cid         int
+	room        string
 	sendMessage func(string)
 }
