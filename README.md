@@ -34,5 +34,8 @@ This is accomplished by replacing one of those dependencies with a simple callba
 # TODO
 
  - health monitoring
+ - shutdown
+ - status reporting
+ - api
  - telemetry
  - describe components and links (explicit "weak" deps?)
