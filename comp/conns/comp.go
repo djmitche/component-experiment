@@ -33,6 +33,7 @@ var Main = core.ComponentImpl{
 }
 
 type component struct {
+	core.BaseComponent
 	logger logger.Wrapper
 	users  core.ComponentReference
 

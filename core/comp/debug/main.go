@@ -36,6 +36,7 @@ var Main = core.ComponentImpl{
 }
 
 type main struct {
+	core.BaseComponent
 	handler    *http.ServeMux
 	registered map[string]string
 }

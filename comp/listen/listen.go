@@ -31,6 +31,7 @@ var Main = core.ComponentImpl{
 type Run struct{}
 
 type listen struct {
+	core.BaseComponent
 	logger logger.Wrapper
 	conns  core.ComponentReference
 }

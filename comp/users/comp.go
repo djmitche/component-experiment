@@ -29,6 +29,7 @@ var Main = core.ComponentImpl{
 }
 
 type component struct {
+	core.BaseComponent
 	mu     sync.Mutex
 	logger logger.Wrapper
 	users  map[int]*user

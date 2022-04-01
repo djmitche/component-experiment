@@ -8,6 +8,7 @@ import (
 )
 
 type connReference struct {
+	core.BaseComponentReference
 	newConnection chan<- net.Conn
 }
 

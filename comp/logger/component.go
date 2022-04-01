@@ -20,7 +20,9 @@ var Main = core.ComponentImpl{
 	},
 }
 
-type logger struct{}
+type logger struct {
+	core.BaseComponent
+}
 
 var _ core.Component = &logger{}
 var _ core.ComponentReference = &logger{}
