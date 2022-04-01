@@ -17,9 +17,11 @@ There are three primary types involved:
 
 # Interesting bits
 
-## Why References
+## Why References?
 
 ComponentReference is separate from the Component to allow remote references (by proxying requests an responses) and to support the common case where the Component is an actor and reqests/responses are handled with channels.
+
+In cases where this is not required, the BaseComponent and BaseComponentRef types remove most of the boilerplate.
 
 ## Wrapped References
 
@@ -31,11 +33,15 @@ Calling a method on a ComponentReference isn't very ergonomic.
 The comps/conns.Main and comps/users.Main components have a circular dependency: comps/conns.Main must provide incoming messages to comps/users.Main, while comps/users.Main must provide outgoing messages to comps/conns.Main.
 This is accomplished by replacing one of those dependencies with a simple callback.
 
+## Debug Output
+
+The core/comps/debug.* components provide a debug server containing useful debugging information about the running system.
+This follows the Go expvar pattern, but has pluggable handlers and can include lots of other useful output, defined by other components.
+They need only depend on `core/comps/debug.Main` and send it a `RegisterHandler` message.
+
 # TODO
 
  - health monitoring
  - shutdown
- - status reporting
  - api
  - telemetry
- - describe components and links (explicit "weak" deps?)
