@@ -25,7 +25,7 @@ func componentPath(suffix string) core.ComponentPath {
 var Main = core.ComponentImpl{
 	Path:         componentPath("Main"),
 	Dependencies: []core.ComponentPath{},
-	Start: func(map[core.ComponentPath]core.ComponentReference) core.Component {
+	Start: func(*core.Orchestrator, map[core.ComponentPath]core.ComponentReference) core.Component {
 		m := &main{
 			handler:    http.NewServeMux(),
 			registered: make(map[string]string),

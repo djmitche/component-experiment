@@ -15,7 +15,7 @@ var componentPath core.ComponentPath = "comp/logger.Main"
 var Main = core.ComponentImpl{
 	Path:         componentPath,
 	Dependencies: []core.ComponentPath{},
-	Start: func(map[core.ComponentPath]core.ComponentReference) core.Component {
+	Start: func(*core.Orchestrator, map[core.ComponentPath]core.ComponentReference) core.Component {
 		return &logger{}
 	},
 }

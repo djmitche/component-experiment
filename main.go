@@ -45,7 +45,7 @@ var Main = core.ComponentImpl{
 		"core/comp/debug.Main",
 		"core/comp/debug.Expvar",
 	},
-	Start: func(deps map[core.ComponentPath]core.ComponentReference) core.Component {
+	Start: func(orch *core.Orchestrator, deps map[core.ComponentPath]core.ComponentReference) core.Component {
 		ctx := context.Background()
 		deps["comp/logger.Main"].RequestAsync(ctx, logger.Output{Message: "Debug on http://127.0.0.1:8080"})
 		deps["core/comp/debug.Main"].RequestAsync(ctx, debug.Serve{Port: 8080})

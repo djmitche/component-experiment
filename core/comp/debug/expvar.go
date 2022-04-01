@@ -11,7 +11,7 @@ import (
 var Expvar = core.ComponentImpl{
 	Path:         componentPath("Expvar"),
 	Dependencies: []core.ComponentPath{"core/comp/debug.Main"},
-	Start: func(deps map[core.ComponentPath]core.ComponentReference) core.Component {
+	Start: func(orch *core.Orchestrator, deps map[core.ComponentPath]core.ComponentReference) core.Component {
 		ctx := context.Background()
 		deps["core/comp/debug.Main"].RequestAsync(
 			ctx,

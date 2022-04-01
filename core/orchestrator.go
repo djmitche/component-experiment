@@ -57,7 +57,7 @@ func (orch *Orchestrator) getComponentReference(path ComponentPath) (ComponentRe
 				deps[depPath] = ref
 			}
 
-			comp = compImpl.Start(deps)
+			comp = compImpl.Start(orch, deps)
 			orch.active[path] = comp
 		}
 

@@ -19,7 +19,7 @@ var componentPath core.ComponentPath = "comp/users.Main"
 var Main = core.ComponentImpl{
 	Path:         componentPath,
 	Dependencies: []core.ComponentPath{"comp/logger.Main"},
-	Start: func(deps map[core.ComponentPath]core.ComponentReference) core.Component {
+	Start: func(orch *core.Orchestrator, deps map[core.ComponentPath]core.ComponentReference) core.Component {
 		c := &component{
 			logger: logger.Wrap(deps),
 			users:  map[int]*user{},

@@ -19,7 +19,7 @@ type ComponentImpl struct {
 	// Start starts an instance of the component.  This will be called on-demand, when
 	// the component is needed.  The given map will contain an entry for every dependency
 	// path given by Dependencies.
-	Start func(map[ComponentPath]ComponentReference) Component
+	Start func(*Orchestrator, map[ComponentPath]ComponentReference) Component
 }
 
 // Component represents a running instance of a component implementation.
