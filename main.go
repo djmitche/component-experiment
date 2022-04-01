@@ -22,6 +22,7 @@ func main() {
 		users.Main,
 		debug.Main,
 		debug.Expvar,
+		debug.Orchestrator,
 	)
 	_, err := orch.Start("Main")
 	if err != nil {
@@ -44,6 +45,7 @@ var Main = core.ComponentImpl{
 		"comp/listen.Main",
 		"core/comp/debug.Main",
 		"core/comp/debug.Expvar",
+		"core/comp/debug.Orchestrator",
 	},
 	Start: func(orch *core.Orchestrator, deps map[core.ComponentPath]core.ComponentReference) core.Component {
 		ctx := context.Background()

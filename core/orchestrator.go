@@ -32,6 +32,17 @@ func (orch *Orchestrator) Start(path ComponentPath) (ComponentReference, error) 
 	return orch.getComponentReference(path)
 }
 
+// DependencyGraph returns the dependency graph, in the form of a map from node
+// name to its dependencies, each given by its ComponentPath.
+func (orch *Orchestrator) DependencyGraph() map[ComponentPath][]ComponentPath {
+	rv := map[ComponentPath][]ComponentPath{}
+	for path, _ := range orch.active {
+		deps := orch.registered[path].Dependencies
+		rv[path] = deps
+	}
+	return rv
+}
+
 func (orch *Orchestrator) getComponentReference(path ComponentPath) (ComponentReference, error) {
 	orch.mu.Lock()
 	defer orch.mu.Unlock()
