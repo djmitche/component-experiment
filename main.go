@@ -24,7 +24,7 @@ func main() {
 		debug.Expvar,
 		debug.Orchestrator,
 	)
-	_, err := orch.Start("Main")
+	err := orch.Start()
 	if err != nil {
 		fmt.Printf("Uhoh: %s\n", err)
 		os.Exit(1)
