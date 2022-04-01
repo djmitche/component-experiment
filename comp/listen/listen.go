@@ -18,10 +18,12 @@ var componentPath core.ComponentPath = "comp/listen.Main"
 var Main = core.ComponentImpl{
 	Path:         componentPath,
 	Dependencies: []core.ComponentPath{"comp/logger.Main", "comp/conns.Main"},
-	Start: func(orch *core.Orchestrator, deps map[core.ComponentPath]core.ComponentReference) core.Component {
+	Start: func(orch *core.Orchestrator, ctx context.Context, deps map[core.ComponentPath]core.ComponentReference) core.Component {
 		l := &listen{
 			logger: logger.Wrap(deps),
 			conns:  deps["comp/conns.Main"],
+			ctx:    ctx,
+			done:   make(chan struct{}),
 		}
 		return l
 	},
@@ -34,6 +36,8 @@ type listen struct {
 	core.BaseComponent
 	logger logger.Wrapper
 	conns  core.ComponentReference
+	ctx    context.Context
+	done   chan struct{}
 }
 
 var _ core.Component = &listen{}
@@ -44,11 +48,16 @@ func (l *listen) NewReference() core.ComponentReference {
 	return l
 }
 
+// Done implements core.Component#Done.
+func (l *listen) Done() <-chan struct{} {
+	return l.done
+}
+
 // Request implements core.ComponentReference#Request.
 func (l *listen) Request(ctx context.Context, msg core.Message) (core.Message, error) {
 	switch msg.(type) {
 	case Run:
-		err := l.run(ctx)
+		err := l.run()
 		return nil, err
 	default:
 		return nil, fmt.Errorf("Unrecognized message type %T", msg)
@@ -60,7 +69,8 @@ func (l *listen) RequestAsync(ctx context.Context, msg core.Message) {
 	go l.Request(ctx, msg)
 }
 
-func (l *listen) run(ctx context.Context) error {
+func (l *listen) run() error {
+	defer close(l.done)
 	addr, err := net.ResolveTCPAddr("tcp", "127.0.0.1:9000")
 	if err != nil {
 		return err
@@ -75,7 +85,7 @@ func (l *listen) run(ctx context.Context) error {
 
 	// stupid workaround to stop listening when the context expires
 	go func() {
-		<-ctx.Done()
+		<-l.ctx.Done()
 		listener.Close()
 	}()
 
@@ -84,7 +94,7 @@ func (l *listen) run(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		_, err = l.conns.Request(ctx, conns.Connection{Conn: c})
+		_, err = l.conns.Request(l.ctx, conns.Connection{Conn: c})
 		if err != nil {
 			return err
 		}

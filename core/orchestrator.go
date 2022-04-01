@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sync"
@@ -14,13 +15,19 @@ type Orchestrator struct {
 	registered map[ComponentPath]ComponentImpl
 
 	// active contains all active components (those in the dependency graph of Root)
-	active map[ComponentPath]Component
+	active map[ComponentPath]activeComponent
 
 	// Root is a ComponentReference to the root component (set after Start)
 	Root ComponentReference
 
 	// RootPath is the path of the root component (the first argument to NewOrchestrator)
 	RootPath ComponentPath
+}
+
+type activeComponent struct {
+	stop  context.CancelFunc
+	comp  Component
+	state ComponentState
 }
 
 // NewOrchestrator creates a new orchestrator, containing the given component
@@ -30,7 +37,7 @@ type Orchestrator struct {
 func NewOrchestrator(componentImpls ...ComponentImpl) *Orchestrator {
 	orch := &Orchestrator{
 		registered: make(map[ComponentPath]ComponentImpl),
-		active:     make(map[ComponentPath]Component),
+		active:     make(map[ComponentPath]activeComponent),
 	}
 	for _, ci := range componentImpls {
 		orch.registered[ci.Path] = ci
@@ -56,16 +63,56 @@ func (orch *Orchestrator) Start() error {
 	return err
 }
 
-// DependencyGraph returns the dependency graph, in the form of a map from node
-// name to its dependencies, each given by its ComponentPath.
-func (orch *Orchestrator) DependencyGraph() map[ComponentPath][]ComponentPath {
+// Stop stops a running orchestrator, in an orderly fashion.  Components are
+// stopped only after everything depending on them are stopped.  This method will
+// block until all components are stopped, or the passed context expires.
+func (orch *Orchestrator) Stop(stopCtx context.Context) error {
+	// components are stopped in the reverse of the order in which they were started
+	order := make([]ComponentPath, len(orch.active))
+	i := len(orch.active) - 1
+	seen := map[ComponentPath]struct{}{}
+	var recur func(path ComponentPath)
+	recur = func(path ComponentPath) {
+		_, found := seen[path]
+		if !found {
+			seen[path] = struct{}{}
+			for _, dep := range orch.registered[path].Dependencies {
+				recur(dep)
+			}
+			order[i] = path
+			i--
+		}
+	}
+	recur(orch.RootPath)
+	if i != -1 {
+		panic("not zero")
+	}
+
+	for _, path := range order {
+		acomp := orch.active[path]
+		acomp.stop()
+		select {
+		case <-acomp.comp.Done():
+		case <-stopCtx.Done():
+			return stopCtx.Err()
+		}
+	}
+	return nil
+}
+
+// Status returns the status of the orchestrator, in the form of a map from
+// component path to information about that component.
+func (orch *Orchestrator) Status() map[ComponentPath]ComponentStatus {
 	orch.mu.Lock()
 	defer orch.mu.Unlock()
 
-	rv := map[ComponentPath][]ComponentPath{}
-	for path, _ := range orch.active {
+	rv := map[ComponentPath]ComponentStatus{}
+	for path, acomp := range orch.active {
 		deps := orch.registered[path].Dependencies
-		rv[path] = deps
+		rv[path] = ComponentStatus{
+			Dependencies: deps,
+			State:        acomp.state,
+		}
 	}
 	return rv
 }
@@ -73,10 +120,12 @@ func (orch *Orchestrator) DependencyGraph() map[ComponentPath][]ComponentPath {
 // getComponentReference loads the given component, if it is not already loaded, and returns
 // a reference to it.  This assumes that orch.mu is held.
 func (orch *Orchestrator) getComponentReference(path ComponentPath) (ComponentReference, error) {
+	bkgnd := context.Background()
+
 	var recur func(seen []ComponentPath, path ComponentPath) (ComponentReference, error)
 	recur = func(seen []ComponentPath, path ComponentPath) (ComponentReference, error) {
-		comp := orch.active[path]
-		if comp == nil {
+		acomp, found := orch.active[path]
+		if !found {
 			compImpl := orch.registered[path]
 			if compImpl.Path == "" {
 				err := fmt.Errorf("No component with path %s", path)
@@ -94,11 +143,16 @@ func (orch *Orchestrator) getComponentReference(path ComponentPath) (ComponentRe
 				deps[depPath] = ref
 			}
 
-			comp = compImpl.Start(orch, deps)
-			orch.active[path] = comp
+			ctx, stop := context.WithCancel(bkgnd)
+			acomp = activeComponent{
+				comp:  compImpl.Start(orch, ctx, deps),
+				stop:  stop,
+				state: RunningState,
+			}
+			orch.active[path] = acomp
 		}
 
-		return comp.NewReference(), nil
+		return acomp.comp.NewReference(), nil
 	}
 
 	return recur([]ComponentPath{}, path)

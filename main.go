@@ -30,10 +30,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	// TODO: shutdown support
-	for {
-		time.Sleep(60 * time.Second)
-	}
+	time.Sleep(15 * time.Second)
+	fmt.Printf("time's up\n")
+	orch.Stop(context.Background())
+	fmt.Printf("DONE (but waiting so you can check everything's stopped!)\n")
+	time.Sleep(15 * time.Second)
 }
 
 var componentPath core.ComponentPath = "Main"
@@ -47,8 +48,7 @@ var Main = core.ComponentImpl{
 		"core/comp/debug.Expvar",
 		"core/comp/debug.Orchestrator",
 	},
-	Start: func(orch *core.Orchestrator, deps map[core.ComponentPath]core.ComponentReference) core.Component {
-		ctx := context.Background()
+	Start: func(orch *core.Orchestrator, ctx context.Context, deps map[core.ComponentPath]core.ComponentReference) core.Component {
 		deps["comp/logger.Main"].RequestAsync(ctx, logger.Output{Message: "Debug on http://127.0.0.1:8080"})
 		deps["core/comp/debug.Main"].RequestAsync(ctx, debug.Serve{Port: 8080})
 		deps["comp/listen.Main"].RequestAsync(ctx, listen.Run{})
@@ -56,7 +56,9 @@ var Main = core.ComponentImpl{
 	},
 }
 
-type comp struct{}
+type comp struct {
+	core.BaseComponent
+}
 
 var _ core.Component = &comp{}
 var _ core.ComponentReference = &comp{}

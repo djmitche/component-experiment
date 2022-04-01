@@ -39,9 +39,15 @@ The core/comps/debug.* components provide a debug server containing useful debug
 This follows the Go expvar pattern, but has pluggable handlers and can include lots of other useful output, defined by other components.
 They need only depend on `core/comps/debug.Main` and send it a `RegisterHandler` message.
 
+## Shutdown
+
+Shutodwn occurs in the opposite order of startup.
+Components are given a context which will cancel when they should stop -- this makes it easy to pass that context to other operations in the component.
+Components signal that they are complete with a Done() method similar to that in the context package.
+The Base types make all of this invisible to components that do not have any need to do anything special when shutting down (such as comps/logging.Main).
+
 # TODO
 
  - health monitoring
- - shutdown
  - api
  - telemetry

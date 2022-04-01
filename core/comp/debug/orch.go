@@ -10,8 +10,7 @@ import (
 var Orchestrator = core.ComponentImpl{
 	Path:         componentPath("Orchestrator"),
 	Dependencies: []core.ComponentPath{"core/comp/debug.Main"},
-	Start: func(orch *core.Orchestrator, deps map[core.ComponentPath]core.ComponentReference) core.Component {
-		ctx := context.Background()
+	Start: func(orch *core.Orchestrator, ctx context.Context, deps map[core.ComponentPath]core.ComponentReference) core.Component {
 		o := &orchestrator{orch: orch}
 		deps["core/comp/debug.Main"].RequestAsync(
 			ctx,
@@ -32,10 +31,11 @@ type orchestrator struct {
 func (o *orchestrator) handler(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8") // normal header
 	w.WriteHeader(http.StatusOK)
-	for comp, deps := range o.orch.DependencyGraph() {
-		fmt.Fprintf(w, "%s depends on:\n", string(comp))
-		for _, d := range deps {
-			fmt.Fprintf(w, "  %s\n", string(d))
+	for comp, status := range o.orch.Status() {
+		fmt.Fprintf(w, "%s: %s\n", string(comp), status.State)
+		fmt.Fprintf(w, "  Depends on:\n")
+		for _, d := range status.Dependencies {
+			fmt.Fprintf(w, "    %s\n", string(d))
 		}
 	}
 }

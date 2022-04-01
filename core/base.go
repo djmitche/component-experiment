@@ -8,11 +8,20 @@ import (
 // BaseComponent is an empty type that can be embedded in a component to
 // implement the Component interface.  By default, it returns a
 // BaseComponentReference (itself, in fact) that accepts no requests.
+// The Done method returns a closed channel, indicating the component is
+// already done.
 type BaseComponent struct{ BaseComponentReference }
 
 // NewReference implements Component#NewReference.
 func (bc *BaseComponent) NewReference() ComponentReference {
 	return bc
+}
+
+// Done implements Component#Done.
+func (bc *BaseComponent) Done() <-chan struct{} {
+	ch := make(chan struct{})
+	close(ch)
+	return ch
 }
 
 // BaseComponentReference is an empty type implementing ComponentReference and

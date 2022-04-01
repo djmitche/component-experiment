@@ -25,10 +25,14 @@ func componentPath(suffix string) core.ComponentPath {
 var Main = core.ComponentImpl{
 	Path:         componentPath("Main"),
 	Dependencies: []core.ComponentPath{},
-	Start: func(*core.Orchestrator, map[core.ComponentPath]core.ComponentReference) core.Component {
+	Start: func(orch *core.Orchestrator, ctx context.Context, deps map[core.ComponentPath]core.ComponentReference) core.Component {
+		done := make(chan struct{})
+		close(done)
 		m := &main{
 			handler:    http.NewServeMux(),
 			registered: make(map[string]string),
+			ctx:        ctx,
+			done:       done,
 		}
 		m.register("", "/", http.HandlerFunc(m.root))
 		return m
@@ -39,6 +43,8 @@ type main struct {
 	core.BaseComponent
 	handler    *http.ServeMux
 	registered map[string]string
+	ctx        context.Context
+	done       chan struct{}
 }
 
 var _ core.Component = &main{}
@@ -47,6 +53,11 @@ var _ core.ComponentReference = &main{}
 // NewReference implements core.Component#NewReference.
 func (m *main) NewReference() core.ComponentReference {
 	return m
+}
+
+// Done implements core.Component#Done.
+func (m *main) Done() <-chan struct{} {
+	return m.done
 }
 
 // Request implements core.ComponentReference#Request.
@@ -71,11 +82,21 @@ func (m *main) RequestAsync(ctx context.Context, msg core.Message) {
 }
 
 func (m *main) serve(port int) {
+	m.done = make(chan struct{}) // an un-closed channel
 	s := &http.Server{
 		Addr:    fmt.Sprintf(":%d", port),
 		Handler: m.handler,
 	}
-	go s.ListenAndServe()
+	go func() {
+		<-m.ctx.Done()
+		// context passed to Shutdown is the timeline for the shutdown to complete; m.ctx
+		// is already done, so would not be a good choice here.
+		s.Shutdown(context.Background())
+	}()
+	go func() {
+		defer close(m.done)
+		s.ListenAndServe()
+	}()
 }
 
 func (m *main) register(name, pattern string, handler http.Handler) {
